@@ -14,6 +14,9 @@ export function Scoreboard() {
         <span>Hand #{game.hands.length + 1}</span>
         <span className="dealer-badge">🎴 {dealer?.name || 'Unknown'} deals</span>
       </div>
+      {game.settings.globalBet && (
+        <div className="stakes-banner">🏆 Stakes: {game.settings.globalBet}</div>
+      )}
 
       <div className="player-cards">
         {game.players.map(player => {

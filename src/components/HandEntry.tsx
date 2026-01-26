@@ -77,6 +77,9 @@ export function HandEntry({ onClose }: { onClose: () => void }) {
           <h2>Hand #{game.hands.length + 1}</h2>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
+        {game.settings.globalBet && (
+          <div className="stakes-banner">🏆 Stakes: {game.settings.globalBet}</div>
+        )}
 
         <div className="winner-select">
           <label>Who went out first? (ended the round)</label>
