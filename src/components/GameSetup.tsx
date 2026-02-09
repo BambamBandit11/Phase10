@@ -2,15 +2,14 @@ import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
 import { Player, GameSettings } from '../types';
 import { useGameStore } from '../store';
+import { WinHistory } from './WinHistory';
 
-const AVATARS = ['😀', '😎', '🤓', '😊', '🥳', '😜'];
+const AVATARS = ['😀', '😎', '🤓', '😊', '🥳', '😜', '🤠', '😇', '🥰', '🤩', '😈', '👻', '🦊', '🐱', '🐶', '🦁', '🐸', '🐵', '🌟', '🔥', '💜', '💚', '🌈', '🎯'];
 
 export function GameSetup() {
   const createGame = useGameStore(s => s.createGame);
-  const [players, setPlayers] = useState<Player[]>([
-    { id: uuid(), name: '', avatar: AVATARS[0] },
-    { id: uuid(), name: '', avatar: AVATARS[1] },
-  ]);
+  const [numPlayers, setNumPlayers] = useState<number | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [dealerIdx, setDealerIdx] = useState(0);
   const [settings, setSettings] = useState<GameSettings>({
     strictPhaseEnforcement: true,
@@ -18,19 +17,16 @@ export function GameSetup() {
     betType: 'perGame',
   });
   const [bet, setBet] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const gameHistory = useGameStore(s => s.gameHistory);
 
-  const addPlayer = () => {
-    if (players.length < 6) {
-      setPlayers([...players, { id: uuid(), name: '', avatar: AVATARS[players.length] }]);
-    }
-  };
-
-  const removePlayer = (idx: number) => {
-    if (players.length > 2) {
-      const newPlayers = players.filter((_, i) => i !== idx);
-      setPlayers(newPlayers);
-      if (dealerIdx >= newPlayers.length) setDealerIdx(0);
-    }
+  const selectNumPlayers = (n: number) => {
+    setNumPlayers(n);
+    setPlayers(Array.from({ length: n }, (_, i) => ({
+      id: uuid(),
+      name: '',
+      avatar: AVATARS[i % AVATARS.length],
+    })));
   };
 
   const updatePlayer = (idx: number, updates: Partial<Player>) => {
@@ -51,10 +47,26 @@ export function GameSetup() {
 
   const canStart = players.filter(p => p.name.trim()).length >= 2;
 
+  if (numPlayers === null) {
+    return (
+      <div className="setup">
+        <h1>🎴 Phase 10</h1>
+        <h2>How many players?</h2>
+        <div className="num-players-grid">
+          {[2, 3, 4, 5, 6].map(n => (
+            <button key={n} className="num-player-btn" onClick={() => selectNumPlayers(n)}>
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="setup">
       <h1>🎴 Phase 10</h1>
-      <h2>New Game</h2>
+      <h2>New Game ({numPlayers} Players)</h2>
 
       <div className="players-list">
         {players.map((p, idx) => (
@@ -82,16 +94,12 @@ export function GameSetup() {
                 <option key={a} value={a}>{a}</option>
               ))}
             </select>
-            {players.length > 2 && (
-              <button className="remove-btn" onClick={() => removePlayer(idx)}>✕</button>
-            )}
+            
           </div>
         ))}
       </div>
 
-      {players.length < 6 && (
-        <button className="add-player-btn" onClick={addPlayer}>+ Add Player</button>
-      )}
+      <button className="change-players-btn" onClick={() => setNumPlayers(null)}>← Change player count</button>
 
       <div className="settings-section">
         <h3>Settings</h3>
@@ -136,6 +144,14 @@ export function GameSetup() {
       <button className="start-btn" onClick={startGame} disabled={!canStart}>
         Start Game
       </button>
+
+      {gameHistory.length > 0 && (
+        <button className="history-btn" onClick={() => setShowHistory(true)}>
+          🏆 View Win History ({gameHistory.length})
+        </button>
+      )}
+
+      {showHistory && <WinHistory onClose={() => setShowHistory(false)} />}
     </div>
   );
 }

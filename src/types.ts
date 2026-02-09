@@ -61,6 +61,14 @@ export interface Game {
   status: 'setup' | 'active' | 'completed';
 }
 
+export interface GameHistoryEntry {
+  id: string;
+  winnerName: string;
+  winnerAvatar?: string;
+  stake?: string;
+  date: number;
+}
+
 export const PHASES: Record<number, string> = {
   1: '2 sets of 3',
   2: '1 set of 3 + 1 run of 4',

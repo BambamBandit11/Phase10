@@ -406,3 +406,72 @@ input:focus, select:focus {
   font-weight: 600;
   margin-bottom: 16px;
 }
+
+.num-players-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.num-player-btn {
+  aspect-ratio: 1;
+  font-size: 2rem;
+  font-weight: 700;
+  background: var(--card);
+  border: 2px solid var(--border);
+}
+
+.num-player-btn:hover {
+  border-color: var(--primary);
+  background: #eef2ff;
+}
+
+.change-players-btn {
+  width: 100%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.history-btn {
+  width: 100%;
+  margin-top: 12px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  color: var(--text);
+}
+
+.win-history-item {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.win-history-winner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.win-history-stake {
+  color: #92400e;
+  font-weight: 500;
+}
+
+.win-history-date {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.avatar-select {
+  width: 70px;
+}

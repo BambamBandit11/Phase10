@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuid } from 'uuid';
-import { Game, Player, Hand, HandScore, PlayerState, GameSettings, getNextDealerId, CardCount } from './types';
+import { Game, Player, Hand, HandScore, PlayerState, GameSettings, getNextDealerId, CardCount, GameHistoryEntry } from './types';
 
 interface GameStore {
   games: Game[];
   currentGameId: string | null;
+  gameHistory: GameHistoryEntry[];
   
   // Actions
   createGame: (players: Player[], dealerId: string, settings: GameSettings) => string;
@@ -24,6 +25,7 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       games: [],
       currentGameId: null,
+      gameHistory: [],
 
       createGame: (players, dealerId, settings) => {
         const id = uuid();
@@ -101,9 +103,22 @@ export const useGameStore = create<GameStore>()(
             status = 'completed';
             endedAt = Date.now();
             // Lowest score among completers wins
-            winnerId = completers.reduce((a, b) => 
+            const winnerState = completers.reduce((a, b) => 
               a.totalScore <= b.totalScore ? a : b
-            ).playerId;
+            );
+            winnerId = winnerState.playerId;
+            const winner = game.players.find(p => p.id === winnerId);
+            if (winner) {
+              set(s => ({
+                gameHistory: [...s.gameHistory, {
+                  id: uuid(),
+                  winnerName: winner.name,
+                  winnerAvatar: winner.avatar,
+                  stake: game.settings.globalBet,
+                  date: Date.now(),
+                }]
+              }));
+            }
           }
 
           // Fixed 10 hands variant
@@ -197,12 +212,22 @@ export const useGameStore = create<GameStore>()(
       },
 
       endGame: (winnerId) => {
+        const game = get().getCurrentGame();
+        const winner = game?.players.find(p => p.id === winnerId);
+        
         set(state => ({
           games: state.games.map(g =>
             g.id === state.currentGameId
               ? { ...g, status: 'completed', winnerId, endedAt: Date.now() }
               : g
           ),
+          gameHistory: winner ? [...state.gameHistory, {
+            id: uuid(),
+            winnerName: winner.name,
+            winnerAvatar: winner.avatar,
+            stake: game?.settings.globalBet,
+            date: Date.now(),
+          }] : state.gameHistory,
         }));
       },
 
