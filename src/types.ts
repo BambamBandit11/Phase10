@@ -1,7 +1,7 @@
 // ===================
 // Common Types
 // ===================
-export type GameType = 'phase10' | 'cribbage' | 'skipbo';
+export type GameType = 'phase10' | 'cribbage' | 'skipbo' | 'mexicantrain';
 
 export interface Player {
   id: string;
@@ -11,11 +11,12 @@ export interface Player {
 
 export interface StakeEntry {
   id: string;
-  gameId: string;
+  gameId?: string;
   gameType: GameType;
   amount: string;
   currency: string;
   players: string[];
+  playerId?: string;
   winnerId?: string;
   createdAt: number;
   settledAt?: number;
@@ -26,7 +27,29 @@ export const PLAYER_COUNTS: Record<GameType, { min: number; max: number }> = {
   phase10: { min: 2, max: 6 },
   cribbage: { min: 2, max: 3 },
   skipbo: { min: 2, max: 6 },
+  mexicantrain: { min: 2, max: 8 },
 };
+
+// ===================
+// Game Snapshot for history (append-only audit)
+// ===================
+export interface GameSnapshot {
+  id: string;
+  gameId: string;
+  gameType: GameType;
+  action: 'created' | 'updated' | 'paused' | 'resumed' | 'switched' | 'completed';
+  timestamp: number;
+  snapshot: PauseSnapshot;
+}
+
+export interface PauseSnapshot {
+  dealerId: string;
+  currentPlayerId: string;
+  round?: number;
+  scores?: Record<string, number>;
+  // Game-specific minimal state
+  gameSpecific?: unknown;
+}
 
 // ===================
 // Phase 10 Types
@@ -152,9 +175,31 @@ export interface SkipBoGame {
 }
 
 // ===================
+// Mexican Train Types
+// ===================
+export interface MexicanTrainGame {
+  id: string;
+  gameType: 'mexicantrain';
+  players: Player[];
+  currentDealerId: string;
+  currentPlayerId: string;
+  round: number; // Which double is the engine (12, 11, 10... down to 0)
+  scores: Record<string, number>; // playerId -> total score (lower is better)
+  trains: Record<string, number[]>; // playerId -> their train dominoes
+  mexicanTrain: number[]; // The public Mexican train
+  trainOpen: Record<string, boolean>; // playerId -> is their train open to others
+  boneyard: number; // Remaining dominoes in boneyard
+  startedAt: number;
+  endedAt?: number;
+  winnerId?: string;
+  status: 'setup' | 'active' | 'paused' | 'completed';
+  pauseSnapshot?: PauseSnapshot;
+}
+
+// ===================
 // Union Game Type
 // ===================
-export type Game = Phase10Game | CribbageGame | SkipBoGame;
+export type Game = Phase10Game | CribbageGame | SkipBoGame | MexicanTrainGame;
 
 export interface GameHistoryEntry {
   id: string;
@@ -185,10 +230,13 @@ export const MARINERS_THEME = {
 // API Response Type
 // ===================
 export interface GameRoomResponse {
-  action: 'created' | 'updated' | 'paused' | 'resumed' | 'error';
+  action: 'created' | 'updated' | 'paused' | 'resumed' | 'switched' | 'completed' | 'query' | 'error';
   game: Game | null;
+  activeGameId?: string | null;
   stakesHistory: StakeEntry[];
+  gameHistory: GameSnapshot[];
   ui: UIHints | null;
+  query?: { question: string; requiredFields?: string[] };
   errorMessage?: string;
 }
 

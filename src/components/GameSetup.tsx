@@ -10,12 +10,14 @@ const GAME_LABELS: Record<GameType, { emoji: string; name: string }> = {
   phase10: { emoji: '🎴', name: 'Phase 10' },
   cribbage: { emoji: '🃏', name: 'Cribbage' },
   skipbo: { emoji: '🔢', name: 'Skip-Bo' },
+  mexicantrain: { emoji: '🚂', name: 'Mexican Train' },
 };
 
 export function GameSetup() {
   const createGame = useGameStore(s => s.createGame);
   const createCribbageGame = useGameStore(s => s.createCribbageGame);
   const createSkipBoGame = useGameStore(s => s.createSkipBoGame);
+  const createMexicanTrainGame = useGameStore(s => s.createMexicanTrainGame);
   const selectedGameType = useGameStore(s => s.selectedGameType);
   const setGameType = useGameStore(s => s.setGameType);
   const addStake = useGameStore(s => s.addStake);
@@ -62,8 +64,10 @@ export function GameSetup() {
       createGame(validPlayers, dealerId, gameSettings);
     } else if (selectedGameType === 'cribbage') {
       createCribbageGame(validPlayers, dealerId, stake);
-    } else {
+    } else if (selectedGameType === 'skipbo') {
       createSkipBoGame(validPlayers, dealerId, stake);
+    } else if (selectedGameType === 'mexicantrain') {
+      createMexicanTrainGame(validPlayers, dealerId, stake);
     }
   };
 
@@ -81,7 +85,7 @@ export function GameSetup() {
         <h2>Which game would you like to play?</h2>
         
         <div className="game-select-grid">
-          {(['phase10', 'cribbage', 'skipbo'] as GameType[]).map(gt => (
+          {(['phase10', 'cribbage', 'skipbo', 'mexicantrain'] as GameType[]).map(gt => (
             <button
               key={gt}
               className={`game-select-btn ${selectedGameType === gt ? 'selected' : ''}`}

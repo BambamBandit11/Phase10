@@ -3,14 +3,16 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuid } from 'uuid';
 import { 
   Game, Player, Hand, PlayerState, GameSettings, getNextDealerId, CardCount, GameHistoryEntry,
-  GameType, Phase10Game, CribbageGame, SkipBoGame, StakeEntry, CribbagePegState,
-  MARINERS_THEME
+  GameType, Phase10Game, CribbageGame, SkipBoGame, MexicanTrainGame, StakeEntry, CribbagePegState,
+  GameSnapshot, PauseSnapshot
 } from './types';
 
 interface GameStore {
   games: Game[];
   currentGameId: string | null;
+  activeGameId: string | null;
   gameHistory: GameHistoryEntry[];
+  gameSnapshots: GameSnapshot[]; // append-only audit
   stakesHistory: StakeEntry[];
   selectedGameType: GameType;
   
@@ -19,19 +21,24 @@ interface GameStore {
   createGame: (players: Player[], dealerId: string, settings: GameSettings) => string;
   createCribbageGame: (players: Player[], dealerId: string, stake?: { amount: string; currency: string }) => string;
   createSkipBoGame: (players: Player[], dealerId: string, stake?: { amount: string; currency: string }) => string;
+  createMexicanTrainGame: (players: Player[], dealerId: string, stake?: { amount: string; currency: string }) => string;
   getCurrentGame: () => Game | null;
+  getActiveGame: () => Game | null;
   addHand: (hand: Omit<Hand, 'id' | 'timestamp'>) => void;
   updateHand: (handId: string, updates: Partial<Hand>) => void;
   deleteHand: (handId: string) => void;
   endGame: (winnerId: string) => void;
   setCurrentGame: (gameId: string | null) => void;
+  switchGame: (gameId: string) => void;
   undoLastHand: () => void;
   deleteGame: (gameId: string) => void;
-  pauseGame: (resumeState?: unknown) => void;
-  resumeGame: () => void;
+  pauseGame: (resumeState?: PauseSnapshot) => void;
+  resumeGame: (gameId?: string) => void;
   addStake: (stake: Omit<StakeEntry, 'id' | 'createdAt'>) => string;
   updateCribbageScore: (playerId: string, points: number) => void;
   updateSkipBoState: (updates: Partial<SkipBoGame>) => void;
+  updateMexicanTrainScore: (playerId: string, points: number) => void;
+  addGameSnapshot: (gameId: string, action: GameSnapshot['action']) => void;
 }
 
 export const useGameStore = create<GameStore>()(
@@ -39,12 +46,37 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       games: [],
       currentGameId: null,
+      activeGameId: null,
       gameHistory: [],
+      gameSnapshots: [],
       stakesHistory: [],
       selectedGameType: 'phase10' as GameType,
 
       setGameType: (gameType) => {
         set({ selectedGameType: gameType });
+      },
+
+      addGameSnapshot: (gameId, action) => {
+        const game = get().games.find(g => g.id === gameId);
+        if (!game) return;
+        
+        const snapshot: PauseSnapshot = {
+          dealerId: game.currentDealerId,
+          currentPlayerId: 'currentPlayerId' in game ? game.currentPlayerId : game.currentDealerId,
+          round: 'round' in game ? game.round : undefined,
+          scores: 'scores' in game ? game.scores : undefined,
+        };
+        
+        const entry: GameSnapshot = {
+          id: uuid(),
+          gameId,
+          gameType: game.gameType,
+          action,
+          timestamp: Date.now(),
+          snapshot,
+        };
+        
+        set(state => ({ gameSnapshots: [...state.gameSnapshots, entry] }));
       },
 
       createGame: (players, dealerId, settings) => {
@@ -153,9 +185,62 @@ export const useGameStore = create<GameStore>()(
         return id;
       },
 
+      createMexicanTrainGame: (players, dealerId, stake) => {
+        const id = uuid();
+        
+        const game: MexicanTrainGame = {
+          id,
+          gameType: 'mexicantrain',
+          players,
+          currentDealerId: dealerId,
+          currentPlayerId: players.find(p => p.id !== dealerId)?.id || dealerId,
+          round: 12, // Start with double-12 as engine
+          scores: Object.fromEntries(players.map(p => [p.id, 0])),
+          trains: Object.fromEntries(players.map(p => [p.id, []])),
+          mexicanTrain: [],
+          trainOpen: Object.fromEntries(players.map(p => [p.id, false])),
+          boneyard: 91 - (players.length <= 4 ? 15 : players.length <= 6 ? 12 : 10) * players.length,
+          startedAt: Date.now(),
+          status: 'active',
+        };
+
+        set(state => ({
+          games: [...state.games, game],
+          currentGameId: id,
+          activeGameId: id,
+        }));
+
+        get().addGameSnapshot(id, 'created');
+
+        if (stake) {
+          get().addStake({
+            gameId: id,
+            gameType: 'mexicantrain',
+            amount: stake.amount,
+            currency: stake.currency,
+            players: players.map(p => p.name),
+          });
+        }
+
+        return id;
+      },
+
       getCurrentGame: () => {
         const { games, currentGameId } = get();
         return games.find(g => g.id === currentGameId) || null;
+      },
+
+      getActiveGame: () => {
+        const { games, activeGameId } = get();
+        return games.find(g => g.id === activeGameId) || null;
+      },
+
+      switchGame: (gameId) => {
+        const game = get().games.find(g => g.id === gameId);
+        if (!game) return;
+        
+        get().addGameSnapshot(gameId, 'switched');
+        set({ activeGameId: gameId, currentGameId: gameId });
       },
 
       addHand: (handData) => {
@@ -343,24 +428,37 @@ export const useGameStore = create<GameStore>()(
       },
 
       pauseGame: (resumeState) => {
+        const currentGameId = get().currentGameId;
+        if (currentGameId) {
+          get().addGameSnapshot(currentGameId, 'paused');
+        }
         set(state => ({
           games: state.games.map(g => {
             if (g.id !== state.currentGameId) return g;
             if (g.gameType === 'cribbage') {
               return { ...g, status: 'paused', pauseState: resumeState as CribbageGame['pauseState'] };
             }
+            if (g.gameType === 'mexicantrain') {
+              return { ...g, status: 'paused', pauseSnapshot: resumeState };
+            }
             return { ...g, status: 'paused' };
           }),
         }));
       },
 
-      resumeGame: () => {
+      resumeGame: (gameId) => {
+        const targetId = gameId || get().currentGameId;
+        if (targetId) {
+          get().addGameSnapshot(targetId, 'resumed');
+        }
         set(state => ({
           games: state.games.map(g =>
-            g.id === state.currentGameId
+            g.id === targetId
               ? { ...g, status: 'active' }
               : g
           ),
+          currentGameId: targetId,
+          activeGameId: targetId,
         }));
       },
 
@@ -400,6 +498,18 @@ export const useGameStore = create<GameStore>()(
           games: state.games.map(g => {
             if (g.id !== state.currentGameId || g.gameType !== 'skipbo') return g;
             return { ...g, ...updates };
+          }),
+        }));
+      },
+
+      updateMexicanTrainScore: (playerId, points) => {
+        set(state => ({
+          games: state.games.map(g => {
+            if (g.id !== state.currentGameId || g.gameType !== 'mexicantrain') return g;
+            const mt = g as MexicanTrainGame;
+            const newScore = (mt.scores[playerId] || 0) + points;
+            const scores = { ...mt.scores, [playerId]: newScore };
+            return { ...mt, scores };
           }),
         }));
       },

@@ -1,5 +1,5 @@
 import { useGameStore } from '../store';
-import { Phase10Game, CribbageGame, SkipBoGame } from '../types';
+import { Phase10Game, CribbageGame, SkipBoGame, MexicanTrainGame } from '../types';
 
 export function GameComplete() {
   const game = useGameStore(s => s.getCurrentGame());
@@ -72,14 +72,19 @@ export function GameComplete() {
         <div className="final-standings">
           <h3>Final Standings</h3>
           {game.players.map((player, idx) => {
-            const score = game.gameType === 'cribbage' 
-              ? (game as CribbageGame).scores[player.id] 
-              : (game as SkipBoGame).stockPiles[player.id];
+            let score: number | string = 0;
+            if (game.gameType === 'cribbage') {
+              score = (game as CribbageGame).scores[player.id];
+            } else if (game.gameType === 'skipbo') {
+              score = (game as SkipBoGame).stockPiles[player.id];
+            } else if (game.gameType === 'mexicantrain') {
+              score = (game as MexicanTrainGame).scores[player.id];
+            }
             return (
               <div key={player.id} className="standing-row">
                 <span className="rank">#{idx + 1}</span>
                 <span>{player.avatar} {player.name}</span>
-                <span>{score} {game.gameType === 'cribbage' ? 'pts' : 'cards left'}</span>
+                <span>{score} {game.gameType === 'skipbo' ? 'cards left' : 'pts'}</span>
               </div>
             );
           })}

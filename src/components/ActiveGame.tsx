@@ -6,7 +6,8 @@ import { History } from './History';
 import { GameComplete } from './GameComplete';
 import { CribbageBoard } from './CribbageBoard';
 import { SkipBoBoard } from './SkipBoBoard';
-import { Phase10Game, CribbageGame, SkipBoGame } from '../types';
+import { MexicanTrainBoard } from './MexicanTrainBoard';
+import { Phase10Game, CribbageGame, SkipBoGame, MexicanTrainGame } from '../types';
 
 export function ActiveGame() {
   const game = useGameStore(s => s.getCurrentGame());
@@ -76,7 +77,7 @@ export function ActiveGame() {
         
         <div className="game-actions">
           {game.status === 'paused' ? (
-            <button className="action-btn primary" onClick={resumeGame}>
+            <button className="action-btn primary" onClick={() => resumeGame()}>
               ▶️ Resume Game
             </button>
           ) : (
@@ -84,8 +85,7 @@ export function ActiveGame() {
               round: cribGame.round,
               dealerId: cribGame.currentDealerId,
               currentPlayerId: cribGame.currentPlayerId,
-              whoHasCrib: cribGame.whoHasCrib,
-              peggingState: cribGame.peggingState || { pegs: cribGame.pegState.map(p => ({ playerId: p.playerId, pegPos: p.frontPeg })), currentPegTurn: cribGame.currentPlayerId, playedCards: [], runningTotal: 0 },
+              scores: cribGame.scores,
             })}>
               ⏸️ Pause
             </button>
@@ -112,6 +112,42 @@ export function ActiveGame() {
         <SkipBoBoard game={skipGame} />
         
         <div className="game-actions">
+          <button
+            className="action-btn danger"
+            onClick={() => {
+              if (confirm('End this game?')) setCurrentGame(null);
+            }}
+          >
+            End Game
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Mexican Train game
+  if (game.gameType === 'mexicantrain') {
+    const mtGame = game as MexicanTrainGame;
+    return (
+      <div className="active-game">
+        <MexicanTrainBoard game={mtGame} />
+        
+        <div className="game-actions">
+          {game.status === 'paused' ? (
+            <button className="action-btn primary" onClick={() => resumeGame()}>
+              ▶️ Resume Game
+            </button>
+          ) : (
+            <button className="action-btn" onClick={() => pauseGame({
+              dealerId: mtGame.currentDealerId,
+              currentPlayerId: mtGame.currentPlayerId,
+              round: mtGame.round,
+              scores: mtGame.scores,
+            })}>
+              ⏸️ Pause
+            </button>
+          )}
+          
           <button
             className="action-btn danger"
             onClick={() => {
