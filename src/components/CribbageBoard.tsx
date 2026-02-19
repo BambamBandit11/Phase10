@@ -1,4 +1,4 @@
-import { CribbageGame, MARINERS_THEME } from '../types';
+import { CribbageGame } from '../types';
 import { useGameStore } from '../store';
 
 interface Props {
@@ -27,7 +27,7 @@ export function CribbageBoard({ game }: Props) {
 
   return (
     <div>
-      <h2 style={{ textAlign: 'center', color: MARINERS_THEME.navy }}>🃏 Cribbage</h2>
+      <h2 style={{ textAlign: 'center' }}>🃏 Cribbage</h2>
       
       {game.status === 'paused' && (
         <div className="stakes-banner" style={{ background: '#fef3c7', color: '#92400e' }}>
@@ -71,7 +71,7 @@ export function CribbageBoard({ game }: Props) {
       
       {/* Board visualization JSON for API */}
       <details style={{ marginTop: 16 }}>
-        <summary style={{ cursor: 'pointer', color: MARINERS_THEME.teal }}>📊 Board State (JSON)</summary>
+        <summary style={{ cursor: 'pointer', color: 'var(--accent)' }}>📊 Board State (JSON)</summary>
         <pre style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: 12, borderRadius: 8, overflow: 'auto' }}>
           {JSON.stringify({
             round: game.round,

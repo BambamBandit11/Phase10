@@ -1,5 +1,5 @@
 import { useGameStore } from '../store';
-import { Phase10Game, CribbageGame, SkipBoGame, MARINERS_THEME } from '../types';
+import { Phase10Game, CribbageGame, SkipBoGame } from '../types';
 
 export function GameComplete() {
   const game = useGameStore(s => s.getCurrentGame());
@@ -60,7 +60,7 @@ export function GameComplete() {
   return (
     <div className="game-complete-overlay">
       <div className="game-complete">
-        <h1 style={{ color: MARINERS_THEME.navy }}>🎉 Game Over!</h1>
+        <h1>🎉 Game Over!</h1>
         
         {winner && (
           <div className="winner-banner">

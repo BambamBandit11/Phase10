@@ -1,4 +1,4 @@
-import { SkipBoGame, MARINERS_THEME } from '../types';
+import { SkipBoGame } from '../types';
 
 interface Props {
   game: SkipBoGame;
@@ -9,7 +9,7 @@ export function SkipBoBoard({ game }: Props) {
 
   return (
     <div>
-      <h2 style={{ textAlign: 'center', color: MARINERS_THEME.navy }}>🔢 Skip-Bo</h2>
+      <h2 style={{ textAlign: 'center' }}>🔢 Skip-Bo</h2>
       
       <div className="skipbo-board">
         {/* Build Piles */}
@@ -30,13 +30,13 @@ export function SkipBoBoard({ game }: Props) {
               key={p.id} 
               className="player-area"
               style={{
-                border: isCurrentPlayer ? `2px solid ${MARINERS_THEME.teal}` : '2px solid transparent',
+                border: isCurrentPlayer ? '2px solid var(--accent)' : '2px solid transparent',
               }}
             >
               <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ fontWeight: 600 }}>
                   {p.avatar} {p.name}
-                  {isCurrentPlayer && <span style={{ color: MARINERS_THEME.teal }}> ← Turn</span>}
+                  {isCurrentPlayer && <span style={{ color: 'var(--accent)' }}> ← Turn</span>}
                 </span>
                 <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
                   Hand: {game.handSizes[p.id]} cards
@@ -67,7 +67,7 @@ export function SkipBoBoard({ game }: Props) {
 
       {/* Board visualization JSON for API */}
       <details style={{ marginTop: 16 }}>
-        <summary style={{ cursor: 'pointer', color: MARINERS_THEME.teal }}>📊 Board State (JSON)</summary>
+        <summary style={{ cursor: 'pointer', color: 'var(--accent)' }}>📊 Board State (JSON)</summary>
         <pre style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: 12, borderRadius: 8, overflow: 'auto' }}>
           {JSON.stringify({
             currentPlayerId: game.currentPlayerId,

@@ -8,16 +8,20 @@
   /* Mariners Theme */
   --mariners-navy: #0C2340;
   --mariners-teal: #2C9AA0;
+  --mariners-silver: #C0C0C0;
+  --bg: var(--mariners-navy);
+  --accent: var(--mariners-teal);
+  --muted: #223b56;
+  --text-on-dark: #ffffff;
   
-  --primary: #0C2340;
-  --primary-dark: #4338ca;
+  --primary: var(--mariners-teal);
+  --primary-dark: #1f8a90;
   --success: #10b981;
   --danger: #ef4444;
-  --bg: #f8fafc;
-  --card: #fff;
-  --text: #1e293b;
-  --text-muted: #64748b;
-  --border: #e2e8f0;
+  --card: rgba(255,255,255,0.03);
+  --text: var(--text-on-dark);
+  --text-muted: rgba(255,255,255,0.6);
+  --border: rgba(255,255,255,0.1);
   --radius: 12px;
 }
 
@@ -58,12 +62,17 @@ input, select {
   border-radius: var(--radius);
   padding: 12px;
   min-height: 48px;
-  background: var(--card);
+  background: var(--muted);
+  color: var(--text);
 }
 
 input:focus, select:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--accent);
+}
+
+input::placeholder {
+  color: var(--text-muted);
 }
 
 .setup { padding-top: 40px; }
@@ -85,13 +94,13 @@ input:focus, select:focus {
   width: 48px;
   height: 48px;
   font-size: 1.5rem;
-  background: var(--card);
+  background: var(--muted);
   border: 2px solid var(--border);
 }
 
 .avatar-btn.dealer {
-  border-color: var(--primary);
-  background: #eef2ff;
+  border-color: var(--accent);
+  background: rgba(44, 154, 160, 0.2);
 }
 
 .player-name { flex: 1; }
@@ -116,10 +125,11 @@ input:focus, select:focus {
 }
 
 .settings-section {
-  background: var(--card);
+  background: var(--muted);
   border-radius: var(--radius);
   padding: 16px;
   margin: 24px 0;
+  border: 1px solid var(--border);
 }
 
 .setting-row {
@@ -136,8 +146,8 @@ input:focus, select:focus {
 
 .start-btn {
   width: 100%;
-  background: var(--primary);
-  color: white;
+  background: linear-gradient(90deg, var(--accent), #0fb1a7);
+  color: #fff;
   font-weight: 600;
   font-size: 1.1rem;
 }
@@ -165,13 +175,13 @@ input:focus, select:focus {
 }
 
 .player-card {
-  background: var(--card);
+  background: var(--muted);
   border-radius: var(--radius);
   padding: 16px;
   border: 2px solid var(--border);
 }
 
-.player-card.is-dealer { border-color: var(--primary); }
+.player-card.is-dealer { border-color: var(--accent); }
 
 .player-header {
   display: flex;
@@ -221,14 +231,15 @@ input:focus, select:focus {
 }
 
 .action-btn {
-  background: var(--card);
+  background: var(--muted);
   border: 2px solid var(--border);
   font-weight: 500;
+  color: var(--text);
 }
 
 .action-btn.primary {
   grid-column: span 2;
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--accent), #0fb1a7);
   color: white;
   border: none;
   font-size: 1.1rem;
@@ -246,11 +257,12 @@ input:focus, select:focus {
 }
 
 .hand-entry, .history, .game-complete {
-  background: var(--card);
+  background: var(--mariners-navy);
   border-radius: var(--radius);
   padding: 20px;
   max-width: 500px;
   margin: 0 auto;
+  border: 1px solid var(--border);
 }
 
 .hand-entry-header, .history-header {
@@ -263,8 +275,9 @@ input:focus, select:focus {
 .close-btn {
   width: 40px;
   height: 40px;
-  background: var(--bg);
+  background: var(--muted);
   font-size: 1.25rem;
+  color: var(--text);
 }
 
 .winner-select { margin-bottom: 20px; }
@@ -274,21 +287,22 @@ input:focus, select:focus {
 .winner-btn {
   flex: 1;
   min-width: 120px;
-  background: var(--bg);
+  background: var(--muted);
   border: 2px solid var(--border);
+  color: var(--text);
 }
 
-.winner-btn.selected { border-color: var(--success); background: #dcfce7; }
+.winner-btn.selected { border-color: var(--success); background: rgba(16, 185, 129, 0.2); }
 
 .entries-table { display: flex; flex-direction: column; gap: 16px; }
 
 .entry-row {
   padding: 16px;
-  background: var(--bg);
+  background: var(--muted);
   border-radius: var(--radius);
 }
 
-.entry-row.winner { background: #dcfce7; }
+.entry-row.winner { background: rgba(16, 185, 129, 0.15); }
 
 .entry-player { display: flex; flex-direction: column; margin-bottom: 12px; }
 .entry-player span:first-child { font-weight: 600; }
@@ -312,10 +326,11 @@ input:focus, select:focus {
 .stepper button {
   width: 40px;
   height: 40px;
-  background: var(--card);
+  background: var(--mariners-navy);
   border: 2px solid var(--border);
   font-size: 1.25rem;
   font-weight: bold;
+  color: var(--text);
 }
 
 .stepper span { width: 40px; text-align: center; font-weight: 600; }
@@ -324,7 +339,7 @@ input:focus, select:focus {
 
 .submit-btn {
   width: 100%;
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--accent), #0fb1a7);
   color: white;
   font-weight: 600;
 }
@@ -334,13 +349,13 @@ input:focus, select:focus {
 .confirm-actions { text-align: center; }
 .confirm-actions p { margin-bottom: 12px; font-weight: 500; }
 .confirm-actions button { margin: 0 8px; }
-.cancel-btn { background: var(--bg); }
+.cancel-btn { background: var(--muted); color: var(--text); }
 .confirm-btn { background: var(--success); color: white; }
 
 .history-list { max-height: 60vh; overflow-y: auto; }
 
 .history-item {
-  background: var(--bg);
+  background: var(--muted);
   border-radius: var(--radius);
   padding: 12px;
   margin-bottom: 12px;
@@ -367,7 +382,7 @@ input:focus, select:focus {
 .export-btn {
   width: 100%;
   margin-top: 16px;
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--accent), #0fb1a7);
   color: white;
 }
 
@@ -386,14 +401,14 @@ input:focus, select:focus {
   justify-content: space-between;
   align-items: center;
   padding: 12px;
-  background: var(--bg);
+  background: var(--muted);
   border-radius: 8px;
   margin-bottom: 8px;
 }
 
 .rank { font-weight: 700; width: 40px; }
 .game-stats { color: var(--text-muted); margin-bottom: 24px; }
-.new-game-btn { width: 100%; background: var(--primary); color: white; font-weight: 600; }
+.new-game-btn { width: 100%; background: linear-gradient(90deg, var(--accent), #0fb1a7); color: white; font-weight: 600; }
 
 .cards-label {
   font-size: 0.85rem;
@@ -423,13 +438,14 @@ input:focus, select:focus {
   aspect-ratio: 1;
   font-size: 2rem;
   font-weight: 700;
-  background: var(--card);
+  background: var(--muted);
   border: 2px solid var(--border);
+  color: var(--text);
 }
 
 .num-player-btn:hover {
-  border-color: var(--primary);
-  background: #eef2ff;
+  border-color: var(--accent);
+  background: rgba(44, 154, 160, 0.2);
 }
 
 .change-players-btn {
@@ -443,13 +459,17 @@ input:focus, select:focus {
 .history-btn {
   width: 100%;
   margin-top: 12px;
-  background: var(--card);
+  background: var(--muted);
   border: 2px solid var(--border);
   color: var(--text);
 }
 
+.history-btn:hover {
+  border-color: var(--accent);
+}
+
 .win-history-item {
-  background: var(--bg);
+  background: var(--muted);
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 12px;
@@ -493,20 +513,21 @@ input:focus, select:focus {
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: var(--card);
+  background: var(--muted);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   text-align: left;
   transition: all 0.15s;
+  color: var(--text);
 }
 
 .game-select-btn.selected {
-  border-color: var(--mariners-teal);
-  background: rgba(44, 154, 160, 0.08);
+  border-color: var(--accent);
+  background: rgba(44, 154, 160, 0.2);
 }
 
 .game-select-btn:hover {
-  border-color: var(--mariners-teal);
+  border-color: var(--accent);
 }
 
 .game-emoji {

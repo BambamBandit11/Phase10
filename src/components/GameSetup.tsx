@@ -77,7 +77,7 @@ export function GameSetup() {
 
     return (
       <div className="setup">
-        <h1 style={{ color: MARINERS_THEME.navy }}>🎮 Game Room</h1>
+        <h1>🎮 Game Room</h1>
         <h2>Which game would you like to play?</h2>
         
         <div className="game-select-grid">
@@ -86,10 +86,6 @@ export function GameSetup() {
               key={gt}
               className={`game-select-btn ${selectedGameType === gt ? 'selected' : ''}`}
               onClick={() => setGameType(gt)}
-              style={{
-                borderColor: selectedGameType === gt ? MARINERS_THEME.teal : undefined,
-                background: selectedGameType === gt ? `${MARINERS_THEME.teal}15` : undefined,
-              }}
             >
               <span className="game-emoji">{GAME_LABELS[gt].emoji}</span>
               <span className="game-name">{GAME_LABELS[gt].name}</span>
@@ -106,6 +102,14 @@ export function GameSetup() {
             </button>
           ))}
         </div>
+
+        {gameHistory.length > 0 && (
+          <button className="history-btn" onClick={() => setShowHistory(true)}>
+            🏆 View Win History ({gameHistory.length})
+          </button>
+        )}
+
+        {showHistory && <WinHistory onClose={() => setShowHistory(false)} />}
       </div>
     );
   }
@@ -114,7 +118,7 @@ export function GameSetup() {
 
   return (
     <div className="setup">
-      <h1 style={{ color: MARINERS_THEME.navy }}>{gameLabel.emoji} {gameLabel.name}</h1>
+      <h1>{gameLabel.emoji} {gameLabel.name}</h1>
       <h2>New Game ({numPlayers} Players)</h2>
 
       <div className="players-list">
