@@ -1,13 +1,25 @@
 import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
-import { Player, GameSettings } from '../types';
+import { Player, GameSettings, GameType, PLAYER_COUNTS, MARINERS_THEME } from '../types';
 import { useGameStore } from '../store';
 import { WinHistory } from './WinHistory';
 
 const AVATARS = ['😀', '😎', '🤓', '😊', '🥳', '😜', '🤠', '😇', '🥰', '🤩', '😈', '👻', '🦊', '🐱', '🐶', '🦁', '🐸', '🐵', '🌟', '🔥', '💜', '💚', '🌈', '🎯'];
 
+const GAME_LABELS: Record<GameType, { emoji: string; name: string }> = {
+  phase10: { emoji: '🎴', name: 'Phase 10' },
+  cribbage: { emoji: '🃏', name: 'Cribbage' },
+  skipbo: { emoji: '🔢', name: 'Skip-Bo' },
+};
+
 export function GameSetup() {
   const createGame = useGameStore(s => s.createGame);
+  const createCribbageGame = useGameStore(s => s.createCribbageGame);
+  const createSkipBoGame = useGameStore(s => s.createSkipBoGame);
+  const selectedGameType = useGameStore(s => s.selectedGameType);
+  const setGameType = useGameStore(s => s.setGameType);
+  const addStake = useGameStore(s => s.addStake);
+  
   const [numPlayers, setNumPlayers] = useState<number | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [dealerIdx, setDealerIdx] = useState(0);
@@ -17,6 +29,7 @@ export function GameSetup() {
     betType: 'perGame',
   });
   const [bet, setBet] = useState('');
+  const [betCurrency, setBetCurrency] = useState('USD');
   const [showHistory, setShowHistory] = useState(false);
   const gameHistory = useGameStore(s => s.gameHistory);
 
@@ -35,25 +48,59 @@ export function GameSetup() {
 
   const startGame = () => {
     const validPlayers = players.filter(p => p.name.trim());
-    if (validPlayers.length < 2) return;
+    const { min } = PLAYER_COUNTS[selectedGameType];
+    if (validPlayers.length < min) return;
 
-    const gameSettings: GameSettings = {
-      ...settings,
-      globalBet: bet || undefined,
-    };
+    const dealerId = validPlayers[dealerIdx % validPlayers.length].id;
+    const stake = bet ? { amount: bet, currency: betCurrency } : undefined;
 
-    createGame(validPlayers, validPlayers[dealerIdx % validPlayers.length].id, gameSettings);
+    if (selectedGameType === 'phase10') {
+      const gameSettings: GameSettings = {
+        ...settings,
+        globalBet: bet || undefined,
+      };
+      createGame(validPlayers, dealerId, gameSettings);
+    } else if (selectedGameType === 'cribbage') {
+      createCribbageGame(validPlayers, dealerId, stake);
+    } else {
+      createSkipBoGame(validPlayers, dealerId, stake);
+    }
   };
 
-  const canStart = players.filter(p => p.name.trim()).length >= 2;
+  const { min: minPlayers } = PLAYER_COUNTS[selectedGameType];
+  const canStart = players.filter(p => p.name.trim()).length >= minPlayers;
 
+  // Game selection screen
   if (numPlayers === null) {
+    const { min, max } = PLAYER_COUNTS[selectedGameType];
+    const playerOptions = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+
     return (
       <div className="setup">
-        <h1>🎴 Phase 10</h1>
-        <h2>How many players?</h2>
+        <h1 style={{ color: MARINERS_THEME.navy }}>🎮 Game Room</h1>
+        <h2>Which game would you like to play?</h2>
+        
+        <div className="game-select-grid">
+          {(['phase10', 'cribbage', 'skipbo'] as GameType[]).map(gt => (
+            <button
+              key={gt}
+              className={`game-select-btn ${selectedGameType === gt ? 'selected' : ''}`}
+              onClick={() => setGameType(gt)}
+              style={{
+                borderColor: selectedGameType === gt ? MARINERS_THEME.teal : undefined,
+                background: selectedGameType === gt ? `${MARINERS_THEME.teal}15` : undefined,
+              }}
+            >
+              <span className="game-emoji">{GAME_LABELS[gt].emoji}</span>
+              <span className="game-name">{GAME_LABELS[gt].name}</span>
+              <span className="game-players">{PLAYER_COUNTS[gt].min}-{PLAYER_COUNTS[gt].max} players</span>
+            </button>
+          ))}
+        </div>
+
+        <h3 style={{ marginTop: 24, marginBottom: 12 }}>How many players?</h3>
         <div className="num-players-grid">
-          {[2, 3, 4, 5, 6].map(n => (
+          {playerOptions.map(n => (
             <button key={n} className="num-player-btn" onClick={() => selectNumPlayers(n)}>
               {n}
             </button>
@@ -63,9 +110,11 @@ export function GameSetup() {
     );
   }
 
+  const gameLabel = GAME_LABELS[selectedGameType];
+
   return (
     <div className="setup">
-      <h1>🎴 Phase 10</h1>
+      <h1 style={{ color: MARINERS_THEME.navy }}>{gameLabel.emoji} {gameLabel.name}</h1>
       <h2>New Game ({numPlayers} Players)</h2>
 
       <div className="players-list">
@@ -104,41 +153,58 @@ export function GameSetup() {
       <div className="settings-section">
         <h3>Settings</h3>
 
-        <label className="setting-row">
-          <span>Rules</span>
-          <select
-            value={settings.variant}
-            onChange={e => setSettings({ ...settings, variant: e.target.value as GameSettings['variant'] })}
-          >
-            <option value="standard">Standard (first to Phase 10)</option>
-            <option value="evens">Evens Only (2,4,6,8,10)</option>
-            <option value="fixed10">Fixed 10 Hands</option>
-          </select>
-        </label>
+        {selectedGameType === 'phase10' && (
+          <>
+            <label className="setting-row">
+              <span>Rules</span>
+              <select
+                value={settings.variant}
+                onChange={e => setSettings({ ...settings, variant: e.target.value as GameSettings['variant'] })}
+              >
+                <option value="standard">Standard (first to Phase 10)</option>
+                <option value="evens">Evens Only (2,4,6,8,10)</option>
+                <option value="fixed10">Fixed 10 Hands</option>
+              </select>
+            </label>
 
-        <label className="setting-row">
-          <span>Phase Enforcement</span>
-          <select
-            value={settings.strictPhaseEnforcement ? 'strict' : 'manual'}
-            onChange={e => setSettings({ ...settings, strictPhaseEnforcement: e.target.value === 'strict' })}
-          >
-            <option value="strict">Strict (auto-advance)</option>
-            <option value="manual">Manual</option>
-          </select>
-        </label>
+            <label className="setting-row">
+              <span>Phase Enforcement</span>
+              <select
+                value={settings.strictPhaseEnforcement ? 'strict' : 'manual'}
+                onChange={e => setSettings({ ...settings, strictPhaseEnforcement: e.target.value === 'strict' })}
+              >
+                <option value="strict">Strict (auto-advance)</option>
+                <option value="manual">Manual</option>
+              </select>
+            </label>
+          </>
+        )}
 
         <label className="setting-row bet-row">
-          <span>Stakes</span>
-          <input
-            type="text"
-            placeholder="e.g. Taco truck dinner"
-            value={bet}
-            onChange={e => setBet(e.target.value)}
-            className="stakes-input"
-          />
+          <span>Stakes (amount + currency)</span>
+          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+            <input
+              type="text"
+              placeholder="e.g. 10"
+              value={bet}
+              onChange={e => setBet(e.target.value)}
+              className="stakes-input"
+              style={{ flex: 2 }}
+            />
+            <select
+              value={betCurrency}
+              onChange={e => setBetCurrency(e.target.value)}
+              style={{ flex: 1 }}
+            >
+              <option value="USD">$</option>
+              <option value="EUR">€</option>
+              <option value="GBP">£</option>
+              <option value="BEER">🍺</option>
+              <option value="TACO">🌮</option>
+              <option value="COFFEE">☕</option>
+            </select>
+          </div>
         </label>
-
-        
       </div>
 
       <button className="start-btn" onClick={startGame} disabled={!canStart}>

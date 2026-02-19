@@ -1,9 +1,36 @@
+// ===================
+// Common Types
+// ===================
+export type GameType = 'phase10' | 'cribbage' | 'skipbo';
+
 export interface Player {
   id: string;
   name: string;
   avatar?: string;
 }
 
+export interface StakeEntry {
+  id: string;
+  gameId: string;
+  gameType: GameType;
+  amount: string;
+  currency: string;
+  players: string[];
+  winnerId?: string;
+  createdAt: number;
+  settledAt?: number;
+}
+
+// Player count constraints per game
+export const PLAYER_COUNTS: Record<GameType, { min: number; max: number }> = {
+  phase10: { min: 2, max: 6 },
+  cribbage: { min: 2, max: 3 },
+  skipbo: { min: 2, max: 6 },
+};
+
+// ===================
+// Phase 10 Types
+// ===================
 export interface HandScore {
   playerId: string;
   phaseLaid: boolean;
@@ -48,8 +75,9 @@ export interface GameSettings {
   betType: 'perHand' | 'perGame';
 }
 
-export interface Game {
+export interface Phase10Game {
   id: string;
+  gameType: 'phase10';
   players: Player[];
   playerStates: PlayerState[];
   hands: Hand[];
@@ -58,15 +86,110 @@ export interface Game {
   startedAt: number;
   endedAt?: number;
   winnerId?: string;
-  status: 'setup' | 'active' | 'completed';
+  status: 'setup' | 'active' | 'paused' | 'completed';
 }
+
+// ===================
+// Cribbage Types
+// ===================
+export interface CribbagePegState {
+  playerId: string;
+  frontPeg: number;
+  backPeg: number;
+}
+
+export interface CribbagePeggingState {
+  pegs: CribbagePegState[];
+  currentPegTurn: string;
+  playedCards: { playerId: string; card: string }[];
+  runningTotal: number;
+}
+
+export interface CribbageResumeState {
+  round: number;
+  dealerId: string;
+  currentPlayerId: string;
+  whoHasCrib: string;
+  peggingState: CribbagePeggingState;
+  shortHandSummary?: string;
+}
+
+export interface CribbageGame {
+  id: string;
+  gameType: 'cribbage';
+  players: Player[];
+  currentDealerId: string;
+  scores: Record<string, number>; // playerId -> score
+  pegState: CribbagePegState[];
+  round: number;
+  whoHasCrib: string;
+  currentPlayerId: string;
+  peggingState?: CribbagePeggingState;
+  startedAt: number;
+  endedAt?: number;
+  winnerId?: string;
+  status: 'setup' | 'active' | 'paused' | 'completed';
+  pauseState?: CribbageResumeState;
+}
+
+// ===================
+// Skip-Bo Types
+// ===================
+export interface SkipBoGame {
+  id: string;
+  gameType: 'skipbo';
+  players: Player[];
+  currentDealerId: string;
+  currentPlayerId: string;
+  stockPiles: Record<string, number>; // playerId -> cards remaining in stock
+  handSizes: Record<string, number>; // playerId -> cards in hand
+  discardPiles: Record<string, number[][]>; // playerId -> 4 discard piles (card arrays)
+  buildPiles: number[][]; // 4 center build piles
+  startedAt: number;
+  endedAt?: number;
+  winnerId?: string;
+  status: 'setup' | 'active' | 'paused' | 'completed';
+}
+
+// ===================
+// Union Game Type
+// ===================
+export type Game = Phase10Game | CribbageGame | SkipBoGame;
 
 export interface GameHistoryEntry {
   id: string;
+  gameType: GameType;
   winnerName: string;
   winnerAvatar?: string;
   stake?: string;
   date: number;
+}
+
+// ===================
+// UI Hints
+// ===================
+export interface UIHints {
+  primaryColor: string;
+  secondaryColor: string;
+  highlightedPlayers?: string[];
+  boardVisualization?: string;
+}
+
+// Mariners theme
+export const MARINERS_THEME = {
+  navy: '#0C2340',
+  teal: '#2C9AA0',
+};
+
+// ===================
+// API Response Type
+// ===================
+export interface GameRoomResponse {
+  action: 'created' | 'updated' | 'paused' | 'resumed' | 'error';
+  game: Game | null;
+  stakesHistory: StakeEntry[];
+  ui: UIHints | null;
+  errorMessage?: string;
 }
 
 export const PHASES: Record<number, string> = {

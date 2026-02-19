@@ -1,10 +1,10 @@
 import { useGameStore } from '../store';
-import { PHASES } from '../types';
+import { PHASES, Phase10Game } from '../types';
 
 export function Scoreboard() {
-  const game = useGameStore(s => s.getCurrentGame());
+  const game = useGameStore(s => s.getCurrentGame()) as Phase10Game | null;
 
-  if (!game) return null;
+  if (!game || game.gameType !== 'phase10') return null;
 
   const dealer = game.players.find(p => p.id === game.currentDealerId);
 
@@ -20,7 +20,7 @@ export function Scoreboard() {
 
       <div className="player-cards">
         {game.players.map(player => {
-          const state = game.playerStates.find(s => s.playerId === player.id);
+          const state = game.playerStates.find((s: { playerId: string }) => s.playerId === player.id);
           if (!state) return null;
 
           const isDealer = player.id === game.currentDealerId;

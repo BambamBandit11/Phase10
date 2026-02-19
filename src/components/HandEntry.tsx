@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGameStore, createEmptyCardCount } from '../store';
-import { HandScore, CardCount, calculateScore, PHASES } from '../types';
+import { HandScore, CardCount, calculateScore, PHASES, Phase10Game, PlayerState } from '../types';
 
 interface PlayerEntry {
   playerId: string;
@@ -11,7 +11,7 @@ interface PlayerEntry {
 }
 
 export function HandEntry({ onClose }: { onClose: () => void }) {
-  const game = useGameStore(s => s.getCurrentGame());
+  const game = useGameStore(s => s.getCurrentGame()) as Phase10Game | null;
   const addHand = useGameStore(s => s.addHand);
 
   const [winnerId, setWinnerId] = useState<string>('');
@@ -26,7 +26,7 @@ export function HandEntry({ onClose }: { onClose: () => void }) {
   );
   const [showConfirm, setShowConfirm] = useState(false);
 
-  if (!game) return null;
+  if (!game || game.gameType !== 'phase10') return null;
 
   const updateEntry = (playerId: string, updates: Partial<PlayerEntry>) => {
     setEntries(entries.map(e => (e.playerId === playerId ? { ...e, ...updates } : e)));
@@ -43,7 +43,7 @@ export function HandEntry({ onClose }: { onClose: () => void }) {
     if (!winnerId) return;
 
     const scores: HandScore[] = entries.map(e => {
-      const playerState = game.playerStates.find(s => s.playerId === e.playerId);
+      const playerState = game.playerStates.find((s: PlayerState) => s.playerId === e.playerId);
       const isWinner = e.playerId === winnerId;
       const score = isWinner ? 0 : calculateScore(e.cards);
       const cardsLeft = e.cards.low + e.cards.high + e.cards.skip + e.cards.wild;
@@ -99,7 +99,7 @@ export function HandEntry({ onClose }: { onClose: () => void }) {
         <div className="entries-table">
           {game.players.map(player => {
             const entry = entries.find(e => e.playerId === player.id);
-            const playerState = game.playerStates.find(s => s.playerId === player.id);
+            const playerState = game.playerStates.find((s: PlayerState) => s.playerId === player.id);
             const isWinner = player.id === winnerId;
             const score = entry ? calculateScore(entry.cards) : 0;
 
