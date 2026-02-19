@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { 
   Game, Player, Hand, PlayerState, GameSettings, getNextDealerId, CardCount, GameHistoryEntry,
   GameType, Phase10Game, CribbageGame, SkipBoGame, MexicanTrainGame, StakeEntry, CribbagePegState,
-  GameSnapshot, PauseSnapshot
+  GameSnapshot, PauseSnapshot, MexicanTrainRound, MexicanTrainRoundScore, MexicanTrainPlayerState
 } from './types';
 
 interface GameStore {
@@ -37,7 +37,7 @@ interface GameStore {
   addStake: (stake: Omit<StakeEntry, 'id' | 'createdAt'>) => string;
   updateCribbageScore: (playerId: string, points: number) => void;
   updateSkipBoState: (updates: Partial<SkipBoGame>) => void;
-  updateMexicanTrainScore: (playerId: string, points: number) => void;
+  addMexicanTrainRound: (round: Omit<MexicanTrainRound, 'id' | 'timestamp'>) => void;
   addGameSnapshot: (gameId: string, action: GameSnapshot['action']) => void;
 }
 
@@ -188,18 +188,20 @@ export const useGameStore = create<GameStore>()(
       createMexicanTrainGame: (players, dealerId, stake) => {
         const id = uuid();
         
+        const playerStates: MexicanTrainPlayerState[] = players.map(p => ({
+          playerId: p.id,
+          totalScore: 0,
+          roundsWon: 0,
+        }));
+
         const game: MexicanTrainGame = {
           id,
           gameType: 'mexicantrain',
           players,
+          playerStates,
+          rounds: [],
           currentDealerId: dealerId,
-          currentPlayerId: players.find(p => p.id !== dealerId)?.id || dealerId,
-          round: 12, // Start with double-12 as engine
-          scores: Object.fromEntries(players.map(p => [p.id, 0])),
-          trains: Object.fromEntries(players.map(p => [p.id, []])),
-          mexicanTrain: [],
-          trainOpen: Object.fromEntries(players.map(p => [p.id, false])),
-          boneyard: 91 - (players.length <= 4 ? 15 : players.length <= 6 ? 12 : 10) * players.length,
+          currentEngine: 12, // Start with double-12
           startedAt: Date.now(),
           status: 'active',
         };
@@ -350,15 +352,16 @@ export const useGameStore = create<GameStore>()(
 
       deleteHand: (handId) => {
         set(state => {
-          const game = state.games.find(g => g.id === state.currentGameId) as Phase10Game | undefined;
+          const game = state.games.find(g => g.id === state.currentGameId);
           if (!game || game.gameType !== 'phase10') return state;
-
-          const handToDelete = game.hands.find(h => h.id === handId);
+          
+          const p10Game = game as Phase10Game;
+          const handToDelete = p10Game.hands.find(h => h.id === handId);
           if (!handToDelete) return state;
 
           // Recalculate player states without this hand
-          const remainingHands = game.hands.filter(h => h.id !== handId);
-          const newPlayerStates = game.players.map(p => {
+          const remainingHands = p10Game.hands.filter(h => h.id !== handId);
+          const newPlayerStates: PlayerState[] = p10Game.players.map(p => {
             let totalScore = 0;
             let handsWon = 0;
             let currentPhase = 1;
@@ -380,7 +383,7 @@ export const useGameStore = create<GameStore>()(
           return {
             games: state.games.map(g =>
               g.id === state.currentGameId
-                ? { ...g, hands: remainingHands, playerStates: newPlayerStates }
+                ? { ...p10Game, hands: remainingHands, playerStates: newPlayerStates } as Phase10Game
                 : g
             ),
           };
@@ -502,16 +505,66 @@ export const useGameStore = create<GameStore>()(
         }));
       },
 
-      updateMexicanTrainScore: (playerId, points) => {
-        set(state => ({
-          games: state.games.map(g => {
-            if (g.id !== state.currentGameId || g.gameType !== 'mexicantrain') return g;
-            const mt = g as MexicanTrainGame;
-            const newScore = (mt.scores[playerId] || 0) + points;
-            const scores = { ...mt.scores, [playerId]: newScore };
-            return { ...mt, scores };
-          }),
-        }));
+      addMexicanTrainRound: (roundData) => {
+        const roundId = uuid();
+        const round: MexicanTrainRound = { ...roundData, id: roundId, timestamp: Date.now() };
+
+        set(state => {
+          const game = state.games.find(g => g.id === state.currentGameId);
+          if (!game || game.gameType !== 'mexicantrain') return state;
+          
+          const mtGame = game as MexicanTrainGame;
+
+          // Update player states with new scores
+          const newPlayerStates: MexicanTrainPlayerState[] = mtGame.playerStates.map(ps => {
+            const roundScore = round.scores.find(s => s.playerId === ps.playerId);
+            if (!roundScore) return ps;
+
+            return {
+              playerId: ps.playerId,
+              totalScore: ps.totalScore + roundScore.pips,
+              roundsWon: round.winnerId === ps.playerId ? ps.roundsWon + 1 : ps.roundsWon,
+            };
+          });
+
+          // Next engine (12 -> 11 -> ... -> 0)
+          const nextEngine = mtGame.currentEngine - 1;
+          const isGameOver = nextEngine < 0;
+
+          // If game over, find winner (lowest score)
+          let winnerId = mtGame.winnerId;
+          let status: MexicanTrainGame['status'] = mtGame.status;
+          let endedAt = mtGame.endedAt;
+
+          if (isGameOver) {
+            status = 'completed';
+            endedAt = Date.now();
+            const winner = newPlayerStates.reduce((a, b) => 
+              a.totalScore <= b.totalScore ? a : b
+            );
+            winnerId = winner.playerId;
+          }
+
+          // Rotate dealer
+          const nextDealerId = getNextDealerId(mtGame.players, mtGame.currentDealerId);
+
+          const updatedGame: MexicanTrainGame = {
+            ...mtGame,
+            rounds: [...mtGame.rounds, round],
+            playerStates: newPlayerStates,
+            currentEngine: isGameOver ? 0 : nextEngine,
+            currentDealerId: nextDealerId,
+            status,
+            winnerId,
+            endedAt,
+          };
+
+          return {
+            games: state.games.map(g =>
+              g.id === state.currentGameId ? updatedGame : g
+            ),
+          };
+        });
       },
     }),
     {

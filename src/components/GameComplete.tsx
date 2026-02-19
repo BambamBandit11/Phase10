@@ -78,7 +78,9 @@ export function GameComplete() {
             } else if (game.gameType === 'skipbo') {
               score = (game as SkipBoGame).stockPiles[player.id];
             } else if (game.gameType === 'mexicantrain') {
-              score = (game as MexicanTrainGame).scores[player.id];
+              const mt = game as MexicanTrainGame;
+              const state = mt.playerStates.find(s => s.playerId === player.id);
+              score = state?.totalScore || 0;
             }
             return (
               <div key={player.id} className="standing-row">

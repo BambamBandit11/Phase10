@@ -177,18 +177,35 @@ export interface SkipBoGame {
 // ===================
 // Mexican Train Types
 // ===================
+export interface MexicanTrainRoundScore {
+  playerId: string;
+  pips: number; // Pips left in hand at end of round
+}
+
+export interface MexicanTrainRound {
+  id: string;
+  roundNumber: number; // 1-13
+  engine: number; // 12, 11, 10... down to 0
+  dealerId: string;
+  winnerId?: string; // Player who went out (0 pips)
+  scores: MexicanTrainRoundScore[];
+  timestamp: number;
+}
+
+export interface MexicanTrainPlayerState {
+  playerId: string;
+  totalScore: number; // Running total (lower is better)
+  roundsWon: number; // Times they went out first
+}
+
 export interface MexicanTrainGame {
   id: string;
   gameType: 'mexicantrain';
   players: Player[];
+  playerStates: MexicanTrainPlayerState[];
+  rounds: MexicanTrainRound[];
   currentDealerId: string;
-  currentPlayerId: string;
-  round: number; // Which double is the engine (12, 11, 10... down to 0)
-  scores: Record<string, number>; // playerId -> total score (lower is better)
-  trains: Record<string, number[]>; // playerId -> their train dominoes
-  mexicanTrain: number[]; // The public Mexican train
-  trainOpen: Record<string, boolean>; // playerId -> is their train open to others
-  boneyard: number; // Remaining dominoes in boneyard
+  currentEngine: number; // 12, 11, 10... down to 0
   startedAt: number;
   endedAt?: number;
   winnerId?: string;

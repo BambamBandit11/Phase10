@@ -1,4 +1,4 @@
-import { MexicanTrainGame } from '../types';
+import { MexicanTrainGame, MexicanTrainPlayerState } from '../types';
 import { useGameStore } from '../store';
 
 interface Props {
@@ -6,131 +6,81 @@ interface Props {
 }
 
 export function MexicanTrainBoard({ game }: Props) {
-  const updateMexicanTrainScore = useGameStore(s => s.updateMexicanTrainScore);
-
   // Sort players by score (lowest is winning)
-  const sortedPlayers = [...game.players].sort(
-    (a, b) => (game.scores[a.id] || 0) - (game.scores[b.id] || 0)
+  const sortedPlayers = [...game.playerStates].sort(
+    (a, b) => a.totalScore - b.totalScore
   );
 
+  const dealer = game.players.find(p => p.id === game.currentDealerId);
+  const roundNumber = 13 - game.currentEngine; // Round 1 = Double-12, Round 13 = Double-0
+
   return (
-    <div>
-      <h2 style={{ textAlign: 'center' }}>🚂 Mexican Train</h2>
-      
+    <div className="scoreboard">
+      <div className="scoreboard-header">
+        <span>Round {roundNumber}/13 • Double-{game.currentEngine}</span>
+        <span className="dealer-badge">🎲 {dealer?.name || 'Unknown'} deals</span>
+      </div>
+
       {game.status === 'paused' && (
         <div className="stakes-banner">
-          ⏸️ Game Paused - Round {13 - game.round} (Double-{game.round} engine)
+          ⏸️ Game Paused
         </div>
       )}
 
-      <div className="skipbo-board">
-        {/* Engine display */}
-        <div style={{ textAlign: 'center', marginBottom: 16 }}>
-          <div style={{ 
-            display: 'inline-block',
-            padding: '12px 24px',
-            background: 'var(--muted)',
-            borderRadius: 8,
-            border: '2px solid var(--accent)'
-          }}>
-            <span style={{ fontSize: '1.5rem' }}>🎲</span>
-            <span style={{ fontWeight: 700, marginLeft: 8 }}>
-              Double-{game.round} Engine
-            </span>
-          </div>
-        </div>
+      <div className="player-cards">
+        {game.players.map(player => {
+          const state = game.playerStates.find((s: MexicanTrainPlayerState) => s.playerId === player.id);
+          if (!state) return null;
 
-        {/* Mexican Train (public) */}
-        <div className="player-area" style={{ borderColor: 'var(--accent)' }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>
-            🚂 Mexican Train (Public)
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ color: 'var(--text-muted)' }}>
-              {game.mexicanTrain.length} dominoes played
-            </span>
-          </div>
-        </div>
+          const isDealer = player.id === game.currentDealerId;
 
-        {/* Player trains */}
-        {game.players.map(p => {
-          const isCurrentPlayer = p.id === game.currentPlayerId;
-          const isOpen = game.trainOpen[p.id];
-          const trainLength = game.trains[p.id]?.length || 0;
-          
           return (
-            <div 
-              key={p.id} 
-              className="player-area"
-              style={{
-                border: isCurrentPlayer ? '2px solid var(--accent)' : '2px solid transparent',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontWeight: 600 }}>
-                  {p.avatar} {p.name}'s Train
-                  {isCurrentPlayer && <span style={{ color: 'var(--accent)' }}> ← Turn</span>}
-                </span>
-                <span style={{ 
-                  padding: '2px 8px', 
-                  borderRadius: 4, 
-                  background: isOpen ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                  color: isOpen ? '#ef4444' : '#10b981',
-                  fontSize: '0.8rem'
-                }}>
-                  {isOpen ? '🔓 Open' : '🔒 Private'}
-                </span>
+            <div key={player.id} className={`player-card ${isDealer ? 'is-dealer' : ''}`}>
+              <div className="player-header">
+                <span className="player-avatar">{player.avatar}</span>
+                <span className="player-name">{player.name}</span>
+                {isDealer && <span className="dealer-icon">🎲</span>}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-muted)' }}>
-                  {trainLength} dominoes played
-                </span>
-                <span style={{ fontWeight: 700 }}>
-                  Score: {game.scores[p.id] || 0}
-                </span>
+
+              <div className="player-stats">
+                <div className="stat">
+                  <span className="stat-label">Total Score</span>
+                  <span className="stat-value">{state.totalScore}</span>
+                  <span className="stat-desc">Lower is better</span>
+                </div>
+
+                <div className="stat">
+                  <span className="stat-label">Rounds Won</span>
+                  <span className="stat-value">{state.roundsWon}</span>
+                </div>
+
+                <div className="stat">
+                  <span className="stat-label">Avg/Round</span>
+                  <span className="stat-value">
+                    {game.rounds.length > 0 
+                      ? Math.round(state.totalScore / game.rounds.length) 
+                      : 0}
+                  </span>
+                </div>
               </div>
             </div>
           );
         })}
-
-        {/* Boneyard */}
-        <div style={{ textAlign: 'center', marginTop: 16, color: 'var(--text-muted)' }}>
-          🦴 Boneyard: {game.boneyard} dominoes remaining
-        </div>
       </div>
 
-      {/* Score entry */}
-      <div className="settings-section">
-        <h3>Add Round Score (pips in hand)</h3>
-        {game.players.map(p => (
-          <div key={p.id} className="setting-row" style={{ marginBottom: 8 }}>
-            <span>{p.avatar} {p.name}</span>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {[5, 10, 15, 25, 50].map(pts => (
-                <button
-                  key={pts}
-                  className="action-btn"
-                  style={{ minWidth: 40, padding: '8px 12px', minHeight: 36 }}
-                  onClick={() => updateMexicanTrainScore(p.id, pts)}
-                >
-                  +{pts}
-                </button>
-              ))}
+      {/* Current standings */}
+      <div className="settings-section" style={{ marginTop: 16 }}>
+        <h3>🏆 Current Standings</h3>
+        {sortedPlayers.map((state, idx) => {
+          const player = game.players.find(p => p.id === state.playerId);
+          return (
+            <div key={state.playerId} className="standing-row">
+              <span className="rank">#{idx + 1}</span>
+              <span>{player?.avatar} {player?.name}</span>
+              <span style={{ fontWeight: 700 }}>{state.totalScore} pts</span>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Standings */}
-      <div className="settings-section">
-        <h3>Standings (lowest score wins)</h3>
-        {sortedPlayers.map((p, idx) => (
-          <div key={p.id} className="standing-row">
-            <span className="rank">#{idx + 1}</span>
-            <span>{p.avatar} {p.name}</span>
-            <span style={{ fontWeight: 700 }}>{game.scores[p.id] || 0} pts</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Board visualization JSON for API */}
@@ -138,18 +88,19 @@ export function MexicanTrainBoard({ game }: Props) {
         <summary style={{ cursor: 'pointer', color: 'var(--accent)' }}>📊 Board State (JSON)</summary>
         <pre style={{ fontSize: '0.75rem', background: 'var(--muted)', padding: 12, borderRadius: 8, overflow: 'auto' }}>
           {JSON.stringify({
-            round: game.round,
-            engine: `Double-${game.round}`,
-            currentPlayerId: game.currentPlayerId,
+            roundNumber,
+            currentEngine: game.currentEngine,
+            totalRounds: 13,
+            roundsPlayed: game.rounds.length,
             currentDealerId: game.currentDealerId,
-            mexicanTrainLength: game.mexicanTrain.length,
-            boneyard: game.boneyard,
-            players: game.players.map(p => ({
-              name: p.name,
-              score: game.scores[p.id] || 0,
-              trainLength: game.trains[p.id]?.length || 0,
-              trainOpen: game.trainOpen[p.id],
-            })),
+            players: game.players.map(p => {
+              const state = game.playerStates.find(s => s.playerId === p.id);
+              return {
+                name: p.name,
+                totalScore: state?.totalScore || 0,
+                roundsWon: state?.roundsWon || 0,
+              };
+            }),
           }, null, 2)}
         </pre>
       </details>
