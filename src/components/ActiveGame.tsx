@@ -4,11 +4,16 @@ import { Scoreboard } from './Scoreboard';
 import { HandEntry } from './HandEntry';
 import { History } from './History';
 import { GameComplete } from './GameComplete';
+import { CribbageBoard } from './CribbageBoard';
+import { SkipBoBoard } from './SkipBoBoard';
+import { Phase10Game, CribbageGame, SkipBoGame } from '../types';
 
 export function ActiveGame() {
   const game = useGameStore(s => s.getCurrentGame());
   const undoLastHand = useGameStore(s => s.undoLastHand);
   const setCurrentGame = useGameStore(s => s.setCurrentGame);
+  const pauseGame = useGameStore(s => s.pauseGame);
+  const resumeGame = useGameStore(s => s.resumeGame);
 
   const [showHandEntry, setShowHandEntry] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -19,45 +24,106 @@ export function ActiveGame() {
     return <GameComplete />;
   }
 
-  return (
-    <div className="active-game">
-      <Scoreboard />
+  // Phase 10 game
+  if (game.gameType === 'phase10') {
+    const p10Game = game as Phase10Game;
+    return (
+      <div className="active-game">
+        <Scoreboard />
 
-      <div className="game-actions">
-        <button className="action-btn primary" onClick={() => setShowHandEntry(true)}>
-          + Enter Hand
-        </button>
-        
-        <button
-          className="action-btn"
-          onClick={() => setShowHistory(true)}
-        >
-          📜 History
-        </button>
+        <div className="game-actions">
+          <button className="action-btn primary" onClick={() => setShowHandEntry(true)}>
+            + Enter Hand
+          </button>
+          
+          <button className="action-btn" onClick={() => setShowHistory(true)}>
+            📜 History
+          </button>
 
-        {game.hands.length > 0 && (
+          {p10Game.hands.length > 0 && (
+            <button
+              className="action-btn"
+              onClick={() => {
+                if (confirm('Undo the last hand?')) undoLastHand();
+              }}
+            >
+              ↩ Undo
+            </button>
+          )}
+
           <button
-            className="action-btn"
+            className="action-btn danger"
             onClick={() => {
-              if (confirm('Undo the last hand?')) undoLastHand();
+              if (confirm('End this game and start over?')) setCurrentGame(null);
             }}
           >
-            ↩ Undo
+            End Game
           </button>
-        )}
+        </div>
 
-        <button
-          className="action-btn danger"
-          onClick={() => {
-            if (confirm('End this game and start over?')) setCurrentGame(null);
-          }}
-        >
-          End Game
-        </button>
+        {showHandEntry && <HandEntry onClose={() => setShowHandEntry(false)} />}
+        {showHistory && <History onClose={() => setShowHistory(false)} />}
       </div>
+    );
+  }
 
-      {showHandEntry && <HandEntry onClose={() => setShowHandEntry(false)} />}
-      {showHistory && <History onClose={() => setShowHistory(false)} />}
-    </div>
-  );
+  // Cribbage game
+  if (game.gameType === 'cribbage') {
+    const cribGame = game as CribbageGame;
+    return (
+      <div className="active-game">
+        <CribbageBoard game={cribGame} />
+        
+        <div className="game-actions">
+          {game.status === 'paused' ? (
+            <button className="action-btn primary" onClick={resumeGame}>
+              ▶️ Resume Game
+            </button>
+          ) : (
+            <button className="action-btn" onClick={() => pauseGame({
+              round: cribGame.round,
+              dealerId: cribGame.currentDealerId,
+              currentPlayerId: cribGame.currentPlayerId,
+              whoHasCrib: cribGame.whoHasCrib,
+              peggingState: cribGame.peggingState || { pegs: cribGame.pegState.map(p => ({ playerId: p.playerId, pegPos: p.frontPeg })), currentPegTurn: cribGame.currentPlayerId, playedCards: [], runningTotal: 0 },
+            })}>
+              ⏸️ Pause
+            </button>
+          )}
+          
+          <button
+            className="action-btn danger"
+            onClick={() => {
+              if (confirm('End this game?')) setCurrentGame(null);
+            }}
+          >
+            End Game
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Skip-Bo game
+  if (game.gameType === 'skipbo') {
+    const skipGame = game as SkipBoGame;
+    return (
+      <div className="active-game">
+        <SkipBoBoard game={skipGame} />
+        
+        <div className="game-actions">
+          <button
+            className="action-btn danger"
+            onClick={() => {
+              if (confirm('End this game?')) setCurrentGame(null);
+            }}
+          >
+            End Game
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }

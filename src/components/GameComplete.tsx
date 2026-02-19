@@ -1,4 +1,5 @@
 import { useGameStore } from '../store';
+import { Phase10Game, CribbageGame, SkipBoGame, MARINERS_THEME } from '../types';
 
 export function GameComplete() {
   const game = useGameStore(s => s.getCurrentGame());
@@ -7,12 +8,59 @@ export function GameComplete() {
   if (!game || game.status !== 'completed') return null;
 
   const winner = game.players.find(p => p.id === game.winnerId);
-  const sortedStates = [...game.playerStates].sort((a, b) => a.totalScore - b.totalScore);
 
+  // Phase 10 complete
+  if (game.gameType === 'phase10') {
+    const p10 = game as Phase10Game;
+    const sortedStates = [...p10.playerStates].sort((a, b) => a.totalScore - b.totalScore);
+
+    return (
+      <div className="game-complete-overlay">
+        <div className="game-complete">
+          <h1>🎉 Game Over!</h1>
+          
+          {winner && (
+            <div className="winner-banner">
+              <span className="winner-avatar">{winner.avatar}</span>
+              <span className="winner-name">{winner.name} Wins!</span>
+            </div>
+          )}
+
+          <div className="final-standings">
+            <h3>Final Standings</h3>
+            {sortedStates.map((state, idx) => {
+              const player = p10.players.find(p => p.id === state.playerId);
+              return (
+                <div key={state.playerId} className="standing-row">
+                  <span className="rank">#{idx + 1}</span>
+                  <span>{player?.avatar} {player?.name}</span>
+                  <span>Phase {state.currentPhase}</span>
+                  <span>{state.totalScore} pts</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="game-stats">
+            <p>Total Hands: {p10.hands.length}</p>
+            {p10.settings.globalBet && (
+              <p>Stakes: {p10.settings.globalBet}</p>
+            )}
+          </div>
+
+          <button className="new-game-btn" onClick={() => setCurrentGame(null)}>
+            New Game
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Cribbage / SkipBo complete
   return (
     <div className="game-complete-overlay">
       <div className="game-complete">
-        <h1>🎉 Game Over!</h1>
+        <h1 style={{ color: MARINERS_THEME.navy }}>🎉 Game Over!</h1>
         
         {winner && (
           <div className="winner-banner">
@@ -23,24 +71,18 @@ export function GameComplete() {
 
         <div className="final-standings">
           <h3>Final Standings</h3>
-          {sortedStates.map((state, idx) => {
-            const player = game.players.find(p => p.id === state.playerId);
+          {game.players.map((player, idx) => {
+            const score = game.gameType === 'cribbage' 
+              ? (game as CribbageGame).scores[player.id] 
+              : (game as SkipBoGame).stockPiles[player.id];
             return (
-              <div key={state.playerId} className="standing-row">
+              <div key={player.id} className="standing-row">
                 <span className="rank">#{idx + 1}</span>
-                <span>{player?.avatar} {player?.name}</span>
-                <span>Phase {state.currentPhase}</span>
-                <span>{state.totalScore} pts</span>
+                <span>{player.avatar} {player.name}</span>
+                <span>{score} {game.gameType === 'cribbage' ? 'pts' : 'cards left'}</span>
               </div>
             );
           })}
-        </div>
-
-        <div className="game-stats">
-          <p>Total Hands: {game.hands.length}</p>
-          {game.settings.globalBet && (
-            <p>Stakes: {game.settings.globalBet}</p>
-          )}
         </div>
 
         <button className="new-game-btn" onClick={() => setCurrentGame(null)}>

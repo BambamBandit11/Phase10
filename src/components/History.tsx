@@ -1,24 +1,25 @@
 import { useGameStore } from '../store';
+import { Phase10Game, Hand, HandScore } from '../types';
 
 export function History({ onClose }: { onClose: () => void }) {
-  const game = useGameStore(s => s.getCurrentGame());
+  const game = useGameStore(s => s.getCurrentGame()) as Phase10Game | null;
   const deleteHand = useGameStore(s => s.deleteHand);
 
-  if (!game) return null;
+  if (!game || game.gameType !== 'phase10') return null;
 
   const getPlayer = (id: string) => game.players.find(p => p.id === id);
 
   const exportCSV = () => {
     const headers = ['Hand', 'Dealer', 'Winner', ...game.players.map(p => `${p.name} Score`), ...game.players.map(p => `${p.name} Phase`)];
-    const rows = game.hands.map(h => {
+    const rows = game.hands.map((h: Hand) => {
       const dealer = getPlayer(h.dealerId);
       const winner = getPlayer(h.winnerId);
       return [
         h.handNumber,
         dealer?.name || '',
         winner?.name || '',
-        ...game.players.map(p => h.scores.find(s => s.playerId === p.id)?.score || 0),
-        ...game.players.map(p => h.scores.find(s => s.playerId === p.id)?.phaseNumber || ''),
+        ...game.players.map(p => h.scores.find((s: HandScore) => s.playerId === p.id)?.score || 0),
+        ...game.players.map(p => h.scores.find((s: HandScore) => s.playerId === p.id)?.phaseNumber || ''),
       ].join(',');
     });
 

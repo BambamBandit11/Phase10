@@ -1,15 +1,24 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuid } from 'uuid';
-import { Game, Player, Hand, HandScore, PlayerState, GameSettings, getNextDealerId, CardCount, GameHistoryEntry } from './types';
+import { 
+  Game, Player, Hand, PlayerState, GameSettings, getNextDealerId, CardCount, GameHistoryEntry,
+  GameType, Phase10Game, CribbageGame, SkipBoGame, StakeEntry, CribbagePegState,
+  MARINERS_THEME
+} from './types';
 
 interface GameStore {
   games: Game[];
   currentGameId: string | null;
   gameHistory: GameHistoryEntry[];
+  stakesHistory: StakeEntry[];
+  selectedGameType: GameType;
   
   // Actions
+  setGameType: (gameType: GameType) => void;
   createGame: (players: Player[], dealerId: string, settings: GameSettings) => string;
+  createCribbageGame: (players: Player[], dealerId: string, stake?: { amount: string; currency: string }) => string;
+  createSkipBoGame: (players: Player[], dealerId: string, stake?: { amount: string; currency: string }) => string;
   getCurrentGame: () => Game | null;
   addHand: (hand: Omit<Hand, 'id' | 'timestamp'>) => void;
   updateHand: (handId: string, updates: Partial<Hand>) => void;
@@ -18,6 +27,11 @@ interface GameStore {
   setCurrentGame: (gameId: string | null) => void;
   undoLastHand: () => void;
   deleteGame: (gameId: string) => void;
+  pauseGame: (resumeState?: unknown) => void;
+  resumeGame: () => void;
+  addStake: (stake: Omit<StakeEntry, 'id' | 'createdAt'>) => string;
+  updateCribbageScore: (playerId: string, points: number) => void;
+  updateSkipBoState: (updates: Partial<SkipBoGame>) => void;
 }
 
 export const useGameStore = create<GameStore>()(
@@ -26,6 +40,12 @@ export const useGameStore = create<GameStore>()(
       games: [],
       currentGameId: null,
       gameHistory: [],
+      stakesHistory: [],
+      selectedGameType: 'phase10' as GameType,
+
+      setGameType: (gameType) => {
+        set({ selectedGameType: gameType });
+      },
 
       createGame: (players, dealerId, settings) => {
         const id = uuid();
@@ -37,8 +57,9 @@ export const useGameStore = create<GameStore>()(
           completedPhase10: false,
         }));
 
-        const game: Game = {
+        const game: Phase10Game = {
           id,
+          gameType: 'phase10',
           players,
           playerStates,
           hands: [],
@@ -56,6 +77,82 @@ export const useGameStore = create<GameStore>()(
         return id;
       },
 
+      createCribbageGame: (players, dealerId, stake) => {
+        const id = uuid();
+        const pegState: CribbagePegState[] = players.map(p => ({
+          playerId: p.id,
+          frontPeg: 0,
+          backPeg: 0,
+        }));
+
+        const game: CribbageGame = {
+          id,
+          gameType: 'cribbage',
+          players,
+          currentDealerId: dealerId,
+          scores: Object.fromEntries(players.map(p => [p.id, 0])),
+          pegState,
+          round: 1,
+          whoHasCrib: dealerId,
+          currentPlayerId: players.find(p => p.id !== dealerId)?.id || dealerId,
+          startedAt: Date.now(),
+          status: 'active',
+        };
+
+        set(state => ({
+          games: [...state.games, game],
+          currentGameId: id,
+        }));
+
+        if (stake) {
+          get().addStake({
+            gameId: id,
+            gameType: 'cribbage',
+            amount: stake.amount,
+            currency: stake.currency,
+            players: players.map(p => p.name),
+          });
+        }
+
+        return id;
+      },
+
+      createSkipBoGame: (players, dealerId, stake) => {
+        const id = uuid();
+        const stockCount = players.length <= 4 ? 30 : 20;
+
+        const game: SkipBoGame = {
+          id,
+          gameType: 'skipbo',
+          players,
+          currentDealerId: dealerId,
+          currentPlayerId: players.find(p => p.id !== dealerId)?.id || dealerId,
+          stockPiles: Object.fromEntries(players.map(p => [p.id, stockCount])),
+          handSizes: Object.fromEntries(players.map(p => [p.id, 5])),
+          discardPiles: Object.fromEntries(players.map(p => [p.id, [[], [], [], []]])),
+          buildPiles: [[], [], [], []],
+          startedAt: Date.now(),
+          status: 'active',
+        };
+
+        set(state => ({
+          games: [...state.games, game],
+          currentGameId: id,
+        }));
+
+        if (stake) {
+          get().addStake({
+            gameId: id,
+            gameType: 'skipbo',
+            amount: stake.amount,
+            currency: stake.currency,
+            players: players.map(p => p.name),
+          });
+        }
+
+        return id;
+      },
+
       getCurrentGame: () => {
         const { games, currentGameId } = get();
         return games.find(g => g.id === currentGameId) || null;
@@ -66,8 +163,8 @@ export const useGameStore = create<GameStore>()(
         const hand: Hand = { ...handData, id: handId, timestamp: Date.now() };
 
         set(state => {
-          const game = state.games.find(g => g.id === state.currentGameId);
-          if (!game) return state;
+          const game = state.games.find(g => g.id === state.currentGameId) as Phase10Game | undefined;
+          if (!game || game.gameType !== 'phase10') return state;
 
           // Update player states based on hand results
           const newPlayerStates = game.playerStates.map(ps => {
@@ -112,6 +209,7 @@ export const useGameStore = create<GameStore>()(
               set(s => ({
                 gameHistory: [...s.gameHistory, {
                   id: uuid(),
+                  gameType: 'phase10' as GameType,
                   winnerName: winner.name,
                   winnerAvatar: winner.avatar,
                   stake: game.settings.globalBet,
@@ -134,10 +232,10 @@ export const useGameStore = create<GameStore>()(
 
           return {
             games: state.games.map(g =>
-              g.id === state.currentGameId
+              g.id === state.currentGameId && g.gameType === 'phase10'
                 ? {
                     ...g,
-                    hands: [...g.hands, hand],
+                    hands: [...(g as Phase10Game).hands, hand],
                     playerStates: newPlayerStates,
                     currentDealerId: nextDealerId,
                     status,
@@ -152,23 +250,23 @@ export const useGameStore = create<GameStore>()(
 
       updateHand: (handId, updates) => {
         set(state => ({
-          games: state.games.map(g =>
-            g.id === state.currentGameId
-              ? {
-                  ...g,
-                  hands: g.hands.map(h =>
-                    h.id === handId ? { ...h, ...updates } : h
-                  ),
-                }
-              : g
-          ),
+          games: state.games.map(g => {
+            if (g.id !== state.currentGameId || g.gameType !== 'phase10') return g;
+            const p10 = g as Phase10Game;
+            return {
+              ...p10,
+              hands: p10.hands.map((h: Hand) =>
+                h.id === handId ? { ...h, ...updates } : h
+              ),
+            };
+          }),
         }));
       },
 
       deleteHand: (handId) => {
         set(state => {
-          const game = state.games.find(g => g.id === state.currentGameId);
-          if (!game) return state;
+          const game = state.games.find(g => g.id === state.currentGameId) as Phase10Game | undefined;
+          if (!game || game.gameType !== 'phase10') return state;
 
           const handToDelete = game.hands.find(h => h.id === handId);
           if (!handToDelete) return state;
@@ -205,8 +303,8 @@ export const useGameStore = create<GameStore>()(
       },
 
       undoLastHand: () => {
-        const game = get().getCurrentGame();
-        if (game && game.hands.length > 0) {
+        const game = get().getCurrentGame() as Phase10Game | null;
+        if (game && game.gameType === 'phase10' && game.hands.length > 0) {
           get().deleteHand(game.hands[game.hands.length - 1].id);
         }
       },
@@ -214,6 +312,7 @@ export const useGameStore = create<GameStore>()(
       endGame: (winnerId) => {
         const game = get().getCurrentGame();
         const winner = game?.players.find(p => p.id === winnerId);
+        const stake = game?.gameType === 'phase10' ? (game as Phase10Game).settings.globalBet : undefined;
         
         set(state => ({
           games: state.games.map(g =>
@@ -223,9 +322,10 @@ export const useGameStore = create<GameStore>()(
           ),
           gameHistory: winner ? [...state.gameHistory, {
             id: uuid(),
+            gameType: game?.gameType || 'phase10',
             winnerName: winner.name,
             winnerAvatar: winner.avatar,
-            stake: game?.settings.globalBet,
+            stake,
             date: Date.now(),
           }] : state.gameHistory,
         }));
@@ -239,6 +339,68 @@ export const useGameStore = create<GameStore>()(
         set(state => ({
           games: state.games.filter(g => g.id !== gameId),
           currentGameId: state.currentGameId === gameId ? null : state.currentGameId,
+        }));
+      },
+
+      pauseGame: (resumeState) => {
+        set(state => ({
+          games: state.games.map(g => {
+            if (g.id !== state.currentGameId) return g;
+            if (g.gameType === 'cribbage') {
+              return { ...g, status: 'paused', pauseState: resumeState as CribbageGame['pauseState'] };
+            }
+            return { ...g, status: 'paused' };
+          }),
+        }));
+      },
+
+      resumeGame: () => {
+        set(state => ({
+          games: state.games.map(g =>
+            g.id === state.currentGameId
+              ? { ...g, status: 'active' }
+              : g
+          ),
+        }));
+      },
+
+      addStake: (stakeData) => {
+        const id = uuid();
+        const stake: StakeEntry = { ...stakeData, id, createdAt: Date.now() };
+        set(state => ({
+          stakesHistory: [...state.stakesHistory, stake],
+        }));
+        return id;
+      },
+
+      updateCribbageScore: (playerId, points) => {
+        set(state => ({
+          games: state.games.map(g => {
+            if (g.id !== state.currentGameId || g.gameType !== 'cribbage') return g;
+            const cg = g as CribbageGame;
+            const newScore = (cg.scores[playerId] || 0) + points;
+            const pegState = cg.pegState.map(p =>
+              p.playerId === playerId
+                ? { ...p, backPeg: p.frontPeg, frontPeg: newScore }
+                : p
+            );
+            const scores = { ...cg.scores, [playerId]: newScore };
+            
+            // Check for win (121 points)
+            const winnerId = newScore >= 121 ? playerId : undefined;
+            const status = winnerId ? 'completed' : cg.status;
+            
+            return { ...cg, scores, pegState, winnerId, status };
+          }),
+        }));
+      },
+
+      updateSkipBoState: (updates) => {
+        set(state => ({
+          games: state.games.map(g => {
+            if (g.id !== state.currentGameId || g.gameType !== 'skipbo') return g;
+            return { ...g, ...updates };
+          }),
         }));
       },
     }),

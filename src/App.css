@@ -5,7 +5,11 @@
 }
 
 :root {
-  --primary: #4f46e5;
+  /* Mariners Theme */
+  --mariners-navy: #0C2340;
+  --mariners-teal: #2C9AA0;
+  
+  --primary: #0C2340;
   --primary-dark: #4338ca;
   --success: #10b981;
   --danger: #ef4444;
@@ -475,3 +479,147 @@ input:focus, select:focus {
 .avatar-select {
   width: 70px;
 }
+
+/* Game Selection */
+.game-select-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.game-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.game-select-btn.selected {
+  border-color: var(--mariners-teal);
+  background: rgba(44, 154, 160, 0.08);
+}
+
+.game-select-btn:hover {
+  border-color: var(--mariners-teal);
+}
+
+.game-emoji {
+  font-size: 2rem;
+}
+
+.game-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  flex: 1;
+}
+
+.game-players {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Cribbage Board */
+.cribbage-board {
+  background: linear-gradient(135deg, #8B4513, #A0522D);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 16px 0;
+  color: white;
+}
+
+.peg-track {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.peg-label {
+  font-weight: 600;
+  width: 80px;
+}
+
+.peg-positions {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.peg-hole {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.3);
+}
+
+.peg-hole.filled {
+  background: var(--mariners-teal);
+  box-shadow: 0 0 4px var(--mariners-teal);
+}
+
+.peg-score {
+  width: 60px;
+  text-align: right;
+  font-weight: 700;
+}
+
+/* Skip-Bo Board */
+.skipbo-board {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.build-piles {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pile {
+  width: 50px;
+  height: 70px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+  background: white;
+}
+
+.pile.build {
+  border-color: var(--mariners-teal);
+  background: rgba(44, 154, 160, 0.1);
+}
+
+.player-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.stock-pile {
+  background: var(--mariners-navy);
+  color: white;
+}
+
+.discard-piles {
+  display: flex;
+  gap: 8px;
+}
+
