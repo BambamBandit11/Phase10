@@ -569,7 +569,23 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: 'phase10-storage',
+      version: 2, // Bump version to reset incompatible state
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState, version) => {
+        // Reset state on version mismatch to avoid type conflicts
+        if (version < 2) {
+          return {
+            games: [],
+            currentGameId: null,
+            activeGameId: null,
+            gameHistory: [],
+            gameSnapshots: [],
+            stakesHistory: [],
+            selectedGameType: 'phase10',
+          };
+        }
+        return persistedState as GameStore;
+      },
     }
   )
 );
